@@ -1,0 +1,59 @@
+groups:
+  - name: flask_app_alerts
+    rules:
+      - alert: HighErrorRate
+        expr: >-
+          sum(rate(http_requests_total{status=~"5.."}[5m]))
+          /
+          sum(rate(http_requests_total[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High HTTP 5xx error rate on flask_app"
+          description: >-
+            More than 5% of requests to the Flask app have returned a 5xx
+            status code over the last 5 minutes, based on
+            http_requests_total.
+
+      - alert: HighRequestLatency
+        expr: >-
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (le, endpoint)
+          ) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High p95 request latency on flask_app"
+          description: >-
+            The 95th percentile request latency (derived from
+            http_request_duration_seconds) has exceeded 500ms for at least
+            5 minutes on one or more endpoints.
+
+      - alert: TooManyInProgressRequests
+        expr: sum(http_requests_in_progress) > 20
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Too many in-flight requests on flask_app"
+          description: >-
+            http_requests_in_progress has stayed above 20 concurrent
+            requests for 2 minutes, which may indicate a stall or slow
+            downstream dependency.
+
+      - alert: HighOrderFailureRate
+        expr: >-
+          sum(rate(orders_processed_total{status="failed"}[10m]))
+          /
+          sum(rate(orders_processed_total[10m])) > 0.2
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High order failure rate"
+          description: >-
+            More than 20% of orders submitted to /orders have failed
+            validation over the last 10 minutes, based on
+            orders_processed_total.
